@@ -1,0 +1,52 @@
+# This is for the DS18B20 temperature probe
+dallas:
+  - pin: GPIO25
+
+# TDS = Total Dissolved Solids
+# This is hidden from Home Assistant and just used for internal calculations
+sensor:
+  - platform: adc
+    pin: GPIO32
+    name: "TDS"
+    id: water_tds
+    update_interval: 10s
+    unit_of_measurement: "ppm"
+    icon: "mdi:water-percent"
+    internal: true
+
+# Temperature In °C
+# This is hidden from Home Assistant and just used for internal calculations
+  - platform: dallas
+    address: 0xf401212e27febf28
+    name: "Water Temperature"
+    id: water_temp
+    unit_of_measurement: "°C"
+    internal: true
+
+# Temperature In °F
+# This is exposed to Home Assistant
+  - platform: template
+    name: "Water Temperature F"
+    id: water_temp_f
+    lambda: |-
+      return id(water_temp).state * (9.0/5.0) + 32.0;
+    unit_of_measurement: "°F"
+
+# Temperature Compensated Voltage
+  - platform: template
+    name: "TCV"
+    id: tcv
+    unit_of_measurement: 'v'
+    accuracy_decimals: 3
+    lambda: 'return ((id(water_tds).state) / (1 + (0.02 * ((id(water_temp).state) - 25.0))));'
+    update_interval: 10s
+    internal: true
+    
+# Temperature Compensated TDS
+  - platform: template
+    name: "TDS"
+    id: corrected_tds
+    icon: "hass:water-opacity"
+    unit_of_measurement: 'ppm'
+    accuracy_decimals: 0    
+    lambda: return (133.42*(id(tcv).state)*(id(tcv).state)*(id(tcv).state) - 255.86*(id(tcv).state)*(id(tcv).state) + 857.39*(id(tcv).state))*0.5;
